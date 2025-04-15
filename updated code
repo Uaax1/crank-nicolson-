@@ -1,0 +1,63 @@
+#forward in time centered in space (explicit) finite difference for a slab. DirichletBC shown first
+import numpy as np
+import matplotlib.pyplot as plt
+Fo= 1/6
+N= 101 # number of spatial points
+M= 15000 # number of time points
+h=10
+rho= 1
+cp=1
+T_infinity=10
+q=10
+dt=1
+dx=1
+A=1
+#set up initial condition must meet boundary conditions
+T_arr = np.zeros((N,M)) #array of temps length N will keep track of time within it 
+cons_array= np.zeros((N,1))
+condition='active'
+if condition == 'dirichlet':
+    #active flux 
+    cons_array[0,0] = T_infinity/((-h*A*dt)/(cp*rho))
+    T_arr[0,0]= 1/((-h*A*dt)/(cp*rho))
+    T_arr= T_arr + cons_array
+elif condition == 'fixed':
+        
+    #fixed flux
+    cons_array[0,0] = (2*q*dt)/(cp*rho*dx)
+    T_arr[0,0]= (1- 2*Fo)
+    T_arr[0,1]= 2*Fo
+    T_arr= T_arr + cons_array
+elif condition == 'dirichlet':
+    T_arr[0,:] =0 #for dirichlet 
+    T_arr[-1,:]=1
+
+#calculate coefficient matrix A  
+A= np.zeros((N,N))
+np.fill_diagonal(A[1:-1,0:-2],Fo)
+np.fill_diagonal(A[1:-1,1:-1], (-2-2*Fo)+(h/(rho*cp)))
+np.fill_diagonal(A[1:-1,2:], Fo)
+A[0,0]=1  #dirichlet BC 
+A[N-1,N-1]=1 #dirichlet BC 
+#calculate constant matrix C 
+##  fill diagonial here
+C = np.zeros((N,N))
+np.fill_diagonal(C[1:-1,0:-2],-Fo)
+np.fill_diagonal(C[1:-1,1:-1], (-2 + 2*Fo)+(h/(rho*cp)))
+np.fill_diagonal(C[1:-1,2:], -Fo)
+#apply boundary conds
+
+C[0,0]=1  #dirichlet BC 
+C[N-1,N-1]=1 #dirichlet BC 
+#calculate the vector B at every time step using matrix C and old Ts 
+for idx in range (1,M): # will end at M-1 idx is T+deltaT
+    b= np.dot(C,T_arr[:,idx-1])  # formulate constants vector of the known old temperatures at time t 
+    T_arr[:,idx]= np.linalg.solve(A, b)  # solve system of eqiaations at new tempertures at t+dt
+    
+
+
+fig,ax= plt.subplots(1,1,figsize=(5,5))
+x_arr= np.linspace(0,1,N)
+ax.plot(x_arr,T_arr[:,0::50]) #tarray vs x for all the rows and through steps of 50 colums 
+#ax.plot(x_arr,T_arr[:,0])#plot of all the initial temp s
+plt.show()
